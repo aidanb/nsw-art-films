@@ -1,14 +1,15 @@
 #!/usr/bin/perl
 
+# Script to scrape film sessions from the Art Gallery of NSW's website
+# and upload them to a Google Calendar.
+# Usage: change the url to the index page for the film series.
+
 #use strict;
 use warnings;
 use Net::Google::Calendar;
 use DateTime::Format::RFC3339;
-use Data::Dumper;
 
 my $url = 'http://www.artgallery.nsw.gov.au/calendar/epic-america-film-series/';
-
-#die "Usage: $0 password\n" if !@ARGV;
 
 open F, "wget -q -O- $url|" or die "Could not open $url\n";
 
@@ -24,19 +25,10 @@ my $film_series;
 #					-> 'description'
 #							-> text
 
-
-
 # Parse the film details step by step
 while (<F>) {
 
 	s/^\w*//;
-
-	# Film series title
-	# <title>Epic America film series :: Art Gallery NSW</title>
-	if ($_ =~ /\<title\>/) {
-		s/\<?\/title\>//;
-		$film_series = $_;
-	}
 
 	# Film title
 	if ($_ =~ '<h3 class="toggle">'){
@@ -47,12 +39,9 @@ while (<F>) {
 		s/\s*$//;
 
 		$title = $_;
-		#$films{$title}++;
-
-		#print "title: $title\n";
 	}
 
-	# Dates/times (multiple values, stored as VALUES)
+	# Dates/times (multiple values, stored as KEYS)
 	# 	ie FILM_TITLE -> "TIME" -> WED 12 December -> 1
 	elsif ($_ =~ '<h3>(Mon|Tue|Wed|Thur|Fri|Sat|Sun)' ) {
 		s/\<h3\>//;
@@ -61,10 +50,7 @@ while (<F>) {
 		s/\<\/span\>\<\/h3\>//;
 		
 		$time = getTime($_);
-
 		$films{$title}{'time'}{$time}++;
-				
-		#print "$title:\t$films{$title}{'time'}\n";
 	}
 
 	# Description (including director, release date, rating, length, etc)
@@ -74,14 +60,10 @@ while (<F>) {
 		s/<\/?cite>//g;
 		
 		$films{$title}{"description"}=$_;
-
-		#print "$title(desc): $_\n";
 	}
 	else {next;}
 }
 
-#print Dumper(\%films);
-#print_films();
 upload_films();
 
 
@@ -89,13 +71,12 @@ upload_films();
 # Returns a string for the start date/time for the event
 sub getTime {
 	my $time = shift;
-
 	$time =~ s/ /-/;
-	
 	return convertTime($time);
 }
 
-# Change the date-time format to comply with RFC 3339 (as required by Google)
+
+# Change the date-time format to comply with RFC 3339 (as required by DateTime)
 sub convertTime {
 	my ($day, $date, $month, $year, $start, $end) = split;
 
@@ -111,11 +92,10 @@ sub convertTime {
 	$start = convert24hr($start) if ($start =~ /.*pm/);
 	$end = convert24hr($end) if ($end =~ /.*pm/);
 
-
 	return "$year-$month-$date"."T"."$start-$end";
-	#print "$year-$month-$date"."T"."$start-$end\n";
 }
 
+# Converts a 12hour time prepended by am or pm to 24hour format.
 sub convert24hr {
 	$time = shift;
 
@@ -132,6 +112,7 @@ return $time;
 
 
 # Upload the films to a Google Calendar hosted by aidanb
+# The Google account detailed below has read/write permission for the calendar.
 sub upload_films {
 	my $cal_url = "https://www.google.com/calendar/feeds/sgidcsi1fo1j3r4dukkj9sksno%40group.calendar.google.com/public/basic";
 
@@ -143,8 +124,6 @@ sub upload_films {
 
 
 	foreach my $title (keys %films) {
-	
-
 		foreach my $time (keys $films{$title}{'time'}) {
 
 			# Create a new datetime object with Sydney UTC offset (+11 hours)
@@ -175,9 +154,7 @@ sub upload_films {
 			$cal->add_entry($entry);
 		}
 	}
-
 }
-
 
 
 # Print function - use for debugging
@@ -195,4 +172,3 @@ sub print_films {
 		#print "$films{$title}{description}\n\n";
 	}
 }
-
