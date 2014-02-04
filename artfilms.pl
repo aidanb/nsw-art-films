@@ -9,9 +9,14 @@ use warnings;
 use Net::Google::Calendar;
 use DateTime::Format::RFC3339;
 
-die 'Password for calendar required' if !@ARGV;
+die 'Usage: url password' if !@ARGV;
 
-my $url = 'http://www.artgallery.nsw.gov.au/calendar/epic-america-film-series/';
+# SET THIS TO 1 TO TEST SCRIPT
+# IF SET TO 1, NO UPLOAD WILL BE PERFORMED
+# DETAILS WILL BE PRINTED TO STDOUT
+my $test = 0;
+
+my $url = "$ARGV[0]";
 
 open F, "wget -q -O- $url|" or die "Could not open $url\n";
 
@@ -119,7 +124,9 @@ sub upload_films {
 	my $cal_url = "https://www.google.com/calendar/feeds/sgidcsi1fo1j3r4dukkj9sksno%40group.calendar.google.com/public/basic";
 
 	my $username = 'nswartfilms';
-	my $password = @ARGV[0];
+	my $password = "$ARGV[1]";
+
+	print "Attempting to login with $username // $password...\n";
 
 	my $cal = Net::Google::Calendar->new( url => $cal_url);
 	$cal->login($username, $password);
@@ -153,7 +160,7 @@ sub upload_films {
 			$entry->status('confirmed');
 			$entry->when($start, $end);
 
-			$cal->add_entry($entry);
+			$cal->add_entry($entry) if !$test;
 		}
 	}
 }
