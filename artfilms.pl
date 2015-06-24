@@ -126,7 +126,7 @@ sub upload_films {
 	my $username = 'nswartfilms';
 	my $password = "$ARGV[1]";
 
-	print "Attempting to login with $username // $password...\n";
+	print "Attempting to login as $username...\n";
 
 	my $cal = Net::Google::Calendar->new( url => $cal_url);
 	$cal->login($username, $password);
